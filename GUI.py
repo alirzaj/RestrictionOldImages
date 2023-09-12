@@ -18,7 +18,7 @@ def modify(image_filename=None, cv2_frame=None):
             sys.exit(1)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_folder", type=str,
+    parser.add_argument("--input_filename", type=str,
                         default= image_filename, help="Test images")
     parser.add_argument(
         "--output_folder",
@@ -36,17 +36,15 @@ def modify(image_filename=None, cv2_frame=None):
     gpu1 = opts.GPU
 
     # resolve relative paths before changing directory
-    opts.input_folder = os.path.abspath(opts.input_folder)
+    opts.input_filename = os.path.abspath(opts.input_filename)
     opts.output_folder = os.path.abspath(opts.output_folder)
     if not os.path.exists(opts.output_folder):
         os.makedirs(opts.output_folder)
 
-    main_environment = os.getcwd()
-
     # Stage 1: Overall Quality Improve
     print("Running Stage 1: Overall restoration")
     os.chdir("./Global")
-    stage_1_input_dir = opts.input_folder
+    stage_1_inputfile = opts.input_filename
     stage_1_output_dir = os.path.join(
         opts.output_folder, "stage_1_restore_output")
     if not os.path.exists(stage_1_output_dir):
@@ -54,8 +52,8 @@ def modify(image_filename=None, cv2_frame=None):
 
     if not opts.with_scratch:
         stage_1_command = (
-            "python3 test.py --test_mode Full --Quality_restore --test_input "
-            + stage_1_input_dir
+            "python3 test_single.py --test_mode Full --Quality_restore --test_input "
+            + stage_1_inputfile
             + " --outputs_dir "
             + stage_1_output_dir
             + " --gpu_ids "
@@ -68,17 +66,19 @@ def modify(image_filename=None, cv2_frame=None):
         new_input = os.path.join(mask_dir, "input")
         new_mask = os.path.join(mask_dir, "mask")
         stage_1_command_1 = (
-            "python3 detection.py --test_path "
-            + stage_1_input_dir
+            "python3 detection_single.py --test_path "
+            + stage_1_inputfile
             + " --output_dir "
             + mask_dir
             + " --input_size full_size"
             + " --GPU "
             + gpu1
         )
+        
+        stage_1_inputfile = os.path.join(stage_1_output_dir, "masks/input/", os.path.basename(stage_1_inputfile)[:-4] + ".png")
         stage_1_command_2 = (
-            "python3 test.py --Scratch_and_Quality_restore --test_input "
-            + new_input
+            "python3 test_single.py --Scratch_and_Quality_restore --test_input "
+            + stage_1_inputfile
             + " --test_mask "
             + new_mask
             + " --outputs_dir "
@@ -111,8 +111,8 @@ def modify(image_filename=None, cv2_frame=None):
     if not os.path.exists(stage_2_output_dir):
         os.makedirs(stage_2_output_dir)
     stage_2_command = (
-        "python3 detect_all_dlib.py --url " + stage_2_input_dir +
-        " --save_url " + stage_2_output_dir
+        "python3 detect_dlib.py --url " + os.path.join(stage_2_input_dir, os.path.basename(stage_1_inputfile)) +
+        " --output_path " + stage_2_output_dir
     )
     run_cmd(stage_2_command)
     print("Finish Stage 2 ...")
@@ -164,9 +164,10 @@ def modify(image_filename=None, cv2_frame=None):
     run_cmd(stage_4_command)
     print("Finish Stage 4 ...")
     print("\n")
+    os.chdir('..')
 
     print("All the processing is done. Please check the results.")
-    cv2.imshow("Image", stage_4_input_image_dir)#
+    image = cv2.imread(os.path.join(stage_4_input_image_dir, os.path.basename(stage_1_inputfile)))
 
 # --------------------------------- The GUI ---------------------------------
 
@@ -190,20 +191,16 @@ while True:
 
     elif event == '-MPHOTO-':
         try:
-            n1 = filename.split("/")[-2]
-            n2 = filename.split("/")[-3]
-            n3 = filename.split("/")[-1]
-            filename= str(f"./{n2}/{n1}")
             modify(filename)
            
             global f_image
-            f_image = f'./output/final_output/{n3}'
+            f_image = os.path.abspath(f'./output/final_output/{os.path.basename(filename)[:-4] + ".png"}')
             
             image = cv2.imread(f_image)
             
             window['-OUT-'].update(data=cv2.imencode('.png', image)[1].tobytes())
             
-        except:
+        except Exception as e:
             continue
 
     elif event == '-IN FILE-':      # A single filename was chosen
