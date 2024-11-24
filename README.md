@@ -1,7 +1,5 @@
 # Old Photo Restoration (Final Project for BSc)
 
-Access to the Colab : https://colab.research.google.com/drive/1ezIX1Uj-lsnk7l7RoLjT0rnVi1aXw2Jw#scrollTo=K-yb3lO5T8aM 
-
 ## Requirement
 The code is tested on Ubuntu with Nvidia GPUs and CUDA installed. Python>=3.6 is required to run the code.
 
